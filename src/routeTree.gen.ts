@@ -17,7 +17,6 @@ import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as SignupRouteImport } from './routes/signup'
 import { Route as AuthenticatedAcademicsRouteImport } from './routes/_authenticated/academics'
 import { Route as AuthenticatedAdministrationRouteImport } from './routes/_authenticated/administration'
-import { Route as AuthenticatedAiKeyRouteImport } from './routes/_authenticated/ai-key'
 import { Route as AuthenticatedBroadsheetRouteImport } from './routes/_authenticated/broadsheet'
 import { Route as AuthenticatedClassesRouteImport } from './routes/_authenticated/classes'
 import { Route as AuthenticatedCommunicationRouteImport } from './routes/_authenticated/communication'
@@ -85,11 +84,6 @@ const AuthenticatedAdministrationRoute =
     path: '/administration',
     getParentRoute: () => AuthenticatedRoute,
   } as any)
-const AuthenticatedAiKeyRoute = AuthenticatedAiKeyRouteImport.update({
-  id: '/ai-key',
-  path: '/ai-key',
-  getParentRoute: () => AuthenticatedRoute,
-} as any)
 const AuthenticatedBroadsheetRoute = AuthenticatedBroadsheetRouteImport.update({
   id: '/broadsheet',
   path: '/broadsheet',
@@ -236,7 +230,6 @@ export interface FileRoutesByFullPath {
   '/signup': typeof SignupRoute
   '/academics': typeof AuthenticatedAcademicsRoute
   '/administration': typeof AuthenticatedAdministrationRoute
-  '/ai-key': typeof AuthenticatedAiKeyRoute
   '/broadsheet': typeof AuthenticatedBroadsheetRoute
   '/classes': typeof AuthenticatedClassesRoute
   '/communication': typeof AuthenticatedCommunicationRoute
@@ -272,7 +265,6 @@ export interface FileRoutesByTo {
   '/signup': typeof SignupRoute
   '/academics': typeof AuthenticatedAcademicsRoute
   '/administration': typeof AuthenticatedAdministrationRoute
-  '/ai-key': typeof AuthenticatedAiKeyRoute
   '/broadsheet': typeof AuthenticatedBroadsheetRoute
   '/classes': typeof AuthenticatedClassesRoute
   '/communication': typeof AuthenticatedCommunicationRoute
@@ -310,7 +302,6 @@ export interface FileRoutesById {
   '/signup': typeof SignupRoute
   '/_authenticated/academics': typeof AuthenticatedAcademicsRoute
   '/_authenticated/administration': typeof AuthenticatedAdministrationRoute
-  '/_authenticated/ai-key': typeof AuthenticatedAiKeyRoute
   '/_authenticated/broadsheet': typeof AuthenticatedBroadsheetRoute
   '/_authenticated/classes': typeof AuthenticatedClassesRoute
   '/_authenticated/communication': typeof AuthenticatedCommunicationRoute
@@ -348,7 +339,6 @@ export interface FileRouteTypes {
     | '/signup'
     | '/academics'
     | '/administration'
-    | '/ai-key'
     | '/broadsheet'
     | '/classes'
     | '/communication'
@@ -384,7 +374,6 @@ export interface FileRouteTypes {
     | '/signup'
     | '/academics'
     | '/administration'
-    | '/ai-key'
     | '/broadsheet'
     | '/classes'
     | '/communication'
@@ -421,7 +410,6 @@ export interface FileRouteTypes {
     | '/signup'
     | '/_authenticated/academics'
     | '/_authenticated/administration'
-    | '/_authenticated/ai-key'
     | '/_authenticated/broadsheet'
     | '/_authenticated/classes'
     | '/_authenticated/communication'
@@ -518,13 +506,6 @@ declare module '@tanstack/react-router' {
       path: '/administration'
       fullPath: '/administration'
       preLoaderRoute: typeof AuthenticatedAdministrationRouteImport
-      parentRoute: typeof AuthenticatedRoute
-    }
-    '/_authenticated/ai-key': {
-      id: '/_authenticated/ai-key'
-      path: '/ai-key'
-      fullPath: '/ai-key'
-      preLoaderRoute: typeof AuthenticatedAiKeyRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
     '/_authenticated/broadsheet': {
@@ -715,7 +696,6 @@ declare module '@tanstack/react-router' {
 interface AuthenticatedRouteChildren {
   AuthenticatedAcademicsRoute: typeof AuthenticatedAcademicsRoute
   AuthenticatedAdministrationRoute: typeof AuthenticatedAdministrationRoute
-  AuthenticatedAiKeyRoute: typeof AuthenticatedAiKeyRoute
   AuthenticatedBroadsheetRoute: typeof AuthenticatedBroadsheetRoute
   AuthenticatedClassesRoute: typeof AuthenticatedClassesRoute
   AuthenticatedCommunicationRoute: typeof AuthenticatedCommunicationRoute
@@ -744,7 +724,6 @@ interface AuthenticatedRouteChildren {
 const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
   AuthenticatedAcademicsRoute: AuthenticatedAcademicsRoute,
   AuthenticatedAdministrationRoute: AuthenticatedAdministrationRoute,
-  AuthenticatedAiKeyRoute: AuthenticatedAiKeyRoute,
   AuthenticatedBroadsheetRoute: AuthenticatedBroadsheetRoute,
   AuthenticatedClassesRoute: AuthenticatedClassesRoute,
   AuthenticatedCommunicationRoute: AuthenticatedCommunicationRoute,

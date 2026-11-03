@@ -80,7 +80,6 @@ export const MODULES: ModuleDef[] = [
     ],
   },
   { slug: "report-templates", label: "Report Templates", icon: FileBarChart, to: "/report-templates", roles: ADMINS },
-  { slug: "ai-key", label: "AI Key Health", icon: KeyRound, to: "/ai-key", roles: ADMINS },
   {
     slug: "academics",
     label: "Academics",

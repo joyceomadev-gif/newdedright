@@ -85,8 +85,8 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { name: "twitter:card", content: "summary" },
       { name: "twitter:title", content: "De-Bright Group of Schools — School management solution by ZGIL" },
       { name: "twitter:description", content: "De-Bright Group of Schools management platform — administration, academics, finance, health, and communication." },
-      { property: "og:image", content: "https://de-bright-campus-compass.lovable.app/__l5e/assets-v1/489b7b2b-8c29-4beb-811d-d2ef6d0ed7c2/de-bright-logo.png" },
-      { name: "twitter:image", content: "https://de-bright-campus-compass.lovable.app/__l5e/assets-v1/489b7b2b-8c29-4beb-811d-d2ef6d0ed7c2/de-bright-logo.png" },
+      { property: "og:image", content: "/de-bright-logo.png" },
+      { name: "twitter:image", content: "/de-bright-logo.png" },
     ],
     links: [
       { rel: "stylesheet", href: appCss },

@@ -26,7 +26,7 @@ export const Route = createFileRoute("/_authenticated/settings")({
   component: SettingsPage,
 });
 
-const PREFS_KEY = "lovable.user.prefs.v1";
+const PREFS_KEY = "app.user.prefs.v1";
 
 type Prefs = {
   language: string;
