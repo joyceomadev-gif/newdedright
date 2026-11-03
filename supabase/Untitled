@@ -1,0 +1,3 @@
+select bucket_id, count(*) as files
+from storage.objects
+group by bucket_id;

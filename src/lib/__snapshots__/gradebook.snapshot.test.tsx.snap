@@ -1,0 +1,221 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`Gradebook render — display_only > hides cumulative/grade and renders raw CA/Exam parts 1`] = `
+<div>
+  <table>
+    <thead>
+      <tr>
+        <th>
+          Student
+        </th>
+        <th>
+          Term 
+          1
+        </th>
+        <th>
+          Term 
+          2
+        </th>
+        <th>
+          Term 
+          3
+        </th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>
+          Ada
+        </td>
+        <td
+          data-testid="raw-0"
+        >
+          80 / 90 / E:70
+        </td>
+        <td
+          data-testid="raw-1"
+        >
+          70 / 80 / E:65
+        </td>
+        <td
+          data-testid="raw-2"
+        >
+          90 / 90 / E:80
+        </td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+`;
+
+exports[`Gradebook render — display_only > mixes empty, partial, and full terms without leaking computed columns 1`] = `
+<div>
+  <table>
+    <thead>
+      <tr>
+        <th>
+          Student
+        </th>
+        <th>
+          Term 
+          1
+        </th>
+        <th>
+          Term 
+          2
+        </th>
+        <th>
+          Term 
+          3
+        </th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>
+          Dapo
+        </td>
+        <td
+          data-testid="raw-0"
+        >
+          —
+        </td>
+        <td
+          data-testid="raw-1"
+        >
+          60
+        </td>
+        <td
+          data-testid="raw-2"
+        >
+          80 / 90 / E:70
+        </td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+`;
+
+exports[`Gradebook render — display_only > renders raw parts when only one CA was recorded (partial CAs) 1`] = `
+<div>
+  <table>
+    <thead>
+      <tr>
+        <th>
+          Student
+        </th>
+        <th>
+          Term 
+          1
+        </th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>
+          Chinwe
+        </td>
+        <td
+          data-testid="raw-0"
+        >
+          70 / E:60
+        </td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+`;
+
+exports[`Gradebook render — display_only > renders raw parts when the exam score is missing (CA-only) 1`] = `
+<div>
+  <table>
+    <thead>
+      <tr>
+        <th>
+          Student
+        </th>
+        <th>
+          Term 
+          1
+        </th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>
+          Bola
+        </td>
+        <td
+          data-testid="raw-0"
+        >
+          80 / 90
+        </td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+`;
+
+exports[`Gradebook render — weighted_ca_exam > shows term totals, cumulative average, and grade 1`] = `
+<div>
+  <table>
+    <thead>
+      <tr>
+        <th>
+          Student
+        </th>
+        <th>
+          Term 
+          1
+        </th>
+        <th>
+          Term 
+          2
+        </th>
+        <th>
+          Term 
+          3
+        </th>
+        <th>
+          Cumulative
+        </th>
+        <th>
+          Grade
+        </th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>
+          Ada
+        </td>
+        <td
+          data-testid="total-0"
+        >
+          74.50
+        </td>
+        <td
+          data-testid="total-1"
+        >
+          68.00
+        </td>
+        <td
+          data-testid="total-2"
+        >
+          83.00
+        </td>
+        <td
+          data-testid="cumulative"
+        >
+          75.17
+        </td>
+        <td
+          data-testid="grade"
+        >
+          A
+        </td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+`;

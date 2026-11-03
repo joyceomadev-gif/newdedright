@@ -1,0 +1,62 @@
+{
+  "version": "7",
+  "dialect": "postgresql",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "7",
+      "when": 1792546684527,
+      "tag": "0000_repair_recycle_bin_generic_primary_keys",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1792547107469,
+      "tag": "0001_complete_recycle_bin_deletion_metadata",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1792576847524,
+      "tag": "0002_tighten_tautology_select_policies",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1792740501986,
+      "tag": "0003_repair_exam_answer_identity_and_safe_regrading",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1792740725403,
+      "tag": "0004_resolve_grading_maintenance_record_alias",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1792740880494,
+      "tag": "0005_preserve_offline_submission_eligibility",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1792851732633,
+      "tag": "0006_question_bank_shared_passages",
+      "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1792863505816,
+      "tag": "0007_revoke_eight_table_anon_privileges",
+      "breakpoints": true
+    }
+  ]
+}

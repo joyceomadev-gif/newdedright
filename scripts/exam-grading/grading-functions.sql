@@ -1,0 +1,213 @@
+-- Schema-only migration: no historical questions or scores are changed on install.
+CREATE OR REPLACE FUNCTION public.exam_answer_text(_value text)
+RETURNS text LANGUAGE sql IMMUTABLE SET search_path=public AS $$
+ SELECT lower(btrim(regexp_replace(regexp_replace(replace(coalesce(_value,''),'&nbsp;',' '),'<[^>]*>',' ','g'),'\s+',' ','g')))
+$$;
+
+CREATE OR REPLACE FUNCTION public.exam_answers_equal(_a text,_b text)
+RETURNS boolean LANGUAGE plpgsql IMMUTABLE SET search_path=public AS $$
+DECLARE a text:=public.exam_answer_text(_a); b text:=public.exam_answer_text(_b);
+BEGIN
+ IF a='' OR b='' THEN RETURN false; END IF;
+ IF a=b THEN RETURN true; END IF;
+ IF a ~ '^[+-]?([0-9]+(\.[0-9]*)?|\.[0-9]+)$' AND b ~ '^[+-]?([0-9]+(\.[0-9]*)?|\.[0-9]+)$' THEN RETURN a::numeric=b::numeric; END IF;
+ RETURN false;
+END $$;
+
+CREATE OR REPLACE FUNCTION public.exam_option_entries(_options jsonb)
+RETURNS TABLE(key text,value text) LANGUAGE sql IMMUTABLE SET search_path=public AS $$
+ WITH entries AS (
+ SELECT chr(64+ord::int) k,v FROM jsonb_array_elements(CASE WHEN jsonb_typeof(_options)='array' THEN _options ELSE '[]'::jsonb END) WITH ORDINALITY a(v,ord)
+ UNION ALL
+ SELECT upper(btrim(k)),v FROM jsonb_each(CASE WHEN jsonb_typeof(_options)='object' THEN _options ELSE '{}'::jsonb END) a(k,v)
+ ), texts AS (
+ SELECT k,CASE WHEN jsonb_typeof(v)='object' THEN coalesce(v->>'text',v->>'value',v->>'label','') ELSE coalesce(v#>>'{}','') END val FROM entries
+ ) SELECT k,val FROM texts WHERE btrim(val)<>'' ORDER BY k
+$$;
+
+CREATE OR REPLACE FUNCTION public.exam_mcq_key(_answer text,_options jsonb)
+RETURNS text LANGUAGE plpgsql IMMUTABLE SET search_path=public AS $$
+DECLARE raw text:=btrim(_answer); found_key text; hits int; prefix text[];
+BEGIN
+ IF coalesce(raw,'')='' THEN RETURN NULL; END IF;
+ SELECT key INTO found_key FROM public.exam_option_entries(_options) WHERE key=upper(raw);
+ IF found_key IS NOT NULL THEN RETURN found_key; END IF;
+ SELECT min(key),count(*) INTO found_key,hits FROM public.exam_option_entries(_options) WHERE public.exam_answers_equal(raw,value);
+ IF hits=1 THEN RETURN found_key; END IF;
+ prefix:=regexp_match(raw,'^([A-Za-z])[.)]\s*(.*)$');
+ IF prefix IS NULL THEN RETURN NULL; END IF;
+ SELECT key INTO found_key FROM public.exam_option_entries(_options) WHERE key=upper(prefix[1]) AND (btrim(prefix[2])='' OR public.exam_answers_equal(prefix[2],value));
+ IF found_key IS NOT NULL THEN RETURN found_key; END IF;
+ SELECT min(key),count(*) INTO found_key,hits FROM public.exam_option_entries(_options) WHERE public.exam_answers_equal(prefix[2],value);
+ RETURN CASE WHEN hits=1 THEN found_key ELSE NULL END;
+END $$;
+
+CREATE OR REPLACE FUNCTION public.exam_normalize_content(_content jsonb)
+RETURNS jsonb LANGUAGE plpgsql IMMUTABLE SET search_path=public AS $$
+DECLARE out_json jsonb:=_content; q jsonb; qs jsonb:='[]'; k text;
+BEGIN
+ IF _content->>'kind'='question' THEN
+  q:=_content->'question';
+  IF q->>'qType'='mcq' THEN
+   k:=public.exam_mcq_key(q->>'correctAnswer',q->'options');
+   IF k IS NOT NULL THEN out_json:=jsonb_set(out_json,'{question,correctAnswer}',to_jsonb(k)); END IF;
+  END IF;
+ ELSIF _content->>'kind'='group' THEN
+  FOR q IN SELECT value FROM jsonb_array_elements(_content->'group'->'questions') LOOP
+   IF q->>'qType'='mcq' THEN
+    k:=public.exam_mcq_key(q->>'correctAnswer',q->'options');
+    IF k IS NOT NULL THEN q:=jsonb_set(q,'{correctAnswer}',to_jsonb(k)); END IF;
+   END IF;
+   qs:=qs||jsonb_build_array(q);
+  END LOOP;
+  out_json:=jsonb_set(out_json,'{group,questions}',qs);
+ END IF;
+ RETURN out_json;
+END $$;
+
+-- Flatten authoritative builder units, not the untrusted client-provided marks.
+CREATE OR REPLACE FUNCTION public.exam_grade_units(_exam_id uuid)
+RETURNS TABLE(question_id uuid,sub_key text,question_type text,options jsonb,correct_answer text,marks numeric,question_text text)
+LANGUAGE plpgsql STABLE SET search_path=public AS $$
+DECLARE row_q record; q jsonb; s jsonb; qs jsonb; qid text; base text;
+BEGIN
+ FOR row_q IN SELECT * FROM public.questions WHERE exam_id=_exam_id AND deleted_at IS NULL ORDER BY position NULLS LAST,id LOOP
+  question_id:=row_q.id;
+  IF row_q.content_json->>'kind' IN ('question','group') THEN
+   qs:=CASE WHEN row_q.content_json->>'kind'='question' THEN jsonb_build_array(row_q.content_json->'question') ELSE row_q.content_json->'group'->'questions' END;
+   FOR q IN SELECT value FROM jsonb_array_elements(qs) LOOP
+    qid:=CASE WHEN row_q.content_json->>'kind'='group' THEN q->>'id' ELSE NULL END;
+    base:=row_q.id::text||CASE WHEN qid IS NULL THEN '' ELSE '::q:'||qid END;
+    IF jsonb_array_length(coalesce(q->'subQuestions','[]'::jsonb))>0 THEN
+     FOR s IN SELECT value FROM jsonb_array_elements(q->'subQuestions') LOOP
+      sub_key:=base||'::s:'||(s->>'id'); question_type:='theory'; options:=NULL; correct_answer:=NULL; marks:=coalesce((s->>'marks')::numeric,0); question_text:=s->>'html'; RETURN NEXT;
+     END LOOP;
+    ELSE
+     sub_key:=base; question_type:=q->>'qType'; options:=q->'options'; correct_answer:=q->>'correctAnswer'; marks:=coalesce((q->>'marks')::numeric,1); question_text:=q->>'html'; RETURN NEXT;
+    END IF;
+   END LOOP;
+  ELSE
+   sub_key:=row_q.id::text; question_type:=coalesce(row_q.question_type,'mcq'); options:=row_q.options; correct_answer:=row_q.correct_answer; marks:=coalesce(row_q.marks,1); question_text:=row_q.question_text; RETURN NEXT;
+  END IF;
+ END LOOP;
+END $$;
+
+CREATE OR REPLACE FUNCTION public.exam_score_answers(_exam_id uuid,_answers jsonb,_preserve_manual boolean DEFAULT false)
+RETURNS jsonb LANGUAGE plpgsql STABLE SET search_path=public AS $$
+DECLARE u record; a jsonb; out_answers jsonb:='[]'; raw numeric:=0; total numeric:=0; awarded numeric; correct boolean; manual boolean; key text; selected text; pct numeric;
+BEGIN
+ FOR u IN SELECT * FROM public.exam_grade_units(_exam_id) LOOP
+  SELECT x INTO a FROM jsonb_array_elements(coalesce(_answers,'[]'::jsonb)) x WHERE x->>'question_id'=u.question_id::text AND coalesce(x->>'sub_key',x->>'question_id')=u.sub_key LIMIT 1;
+  selected:=a->>'student_answer';
+  manual:=u.question_type NOT IN ('mcq','multiple_choice','objective','true_false','short_answer','fill_gap','fill_blank');
+  key:=CASE WHEN u.question_type IN ('mcq','multiple_choice','objective') OR (u.question_type='true_false' AND EXISTS(SELECT 1 FROM public.exam_option_entries(u.options))) THEN public.exam_mcq_key(u.correct_answer,u.options) ELSE u.correct_answer END;
+  IF manual THEN
+   correct:=NULL;
+   awarded:=CASE WHEN _preserve_manual THEN greatest(0,least(u.marks,coalesce((a->>'teacher_score')::numeric,(a->>'awarded_marks')::numeric,(a->>'marks_awarded')::numeric,CASE WHEN (a->>'is_correct')::boolean THEN u.marks ELSE 0 END))) ELSE 0 END;
+  ELSE
+   correct:=CASE WHEN u.question_type IN ('mcq','multiple_choice','objective') OR (u.question_type='true_false' AND EXISTS(SELECT 1 FROM public.exam_option_entries(u.options))) THEN key IS NOT NULL AND public.exam_mcq_key(selected,u.options)=key ELSE public.exam_answers_equal(selected,key) END;
+   correct:=coalesce(correct,false); awarded:=CASE WHEN correct THEN u.marks ELSE 0 END;
+  END IF;
+  total:=total+u.marks; raw:=raw+awarded;
+  out_answers:=out_answers||jsonb_build_array(coalesce(a,'{}')||jsonb_build_object('question_id',u.question_id,'sub_key',u.sub_key,'question_type',u.question_type,'question_text',u.question_text,'options',u.options,'student_answer',CASE WHEN u.question_type IN ('mcq','multiple_choice','objective') THEN coalesce(public.exam_mcq_key(selected,u.options),selected) ELSE selected END,'correct_answer',key,'marks',u.marks,'is_correct',CASE WHEN manual AND _preserve_manual THEN a->'is_correct' ELSE to_jsonb(correct) END,'needs_grading',CASE WHEN manual AND _preserve_manual THEN coalesce((a->>'needs_grading')::boolean,true) ELSE manual END,'awarded_marks',awarded,'marks_awarded',awarded));
+ END LOOP;
+ pct:=CASE WHEN total>0 THEN round(raw/total*100,2) ELSE 0 END;
+ RETURN jsonb_build_object('raw_score',raw,'total_marks',total,'percentage',pct,'answers',out_answers);
+END $$;
+
+CREATE OR REPLACE FUNCTION public.submit_exam_attempt(_exam_id uuid,_student_id uuid,_started_at timestamptz,_submitted_at timestamptz,_duration_seconds integer,_answers jsonb)
+RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path=public AS $$
+DECLARE scored jsonb; attempt_id uuid;
+BEGIN
+ IF auth.uid() IS NULL THEN RAISE EXCEPTION 'Not authenticated'; END IF;
+ IF NOT EXISTS(SELECT 1 FROM public.students WHERE id=_student_id AND user_id=auth.uid() AND deleted_at IS NULL) THEN RAISE EXCEPTION 'Student ownership required'; END IF;
+ IF NOT public.student_can_view_exam(_exam_id,auth.uid()) THEN RAISE EXCEPTION 'Exam not available'; END IF;
+ scored:=public.exam_score_answers(_exam_id,_answers,false);
+ INSERT INTO public.exam_attempts(exam_id,student_id,started_at,submitted_at,duration_seconds,raw_score,total_marks,percentage,answers,status)
+ VALUES(_exam_id,_student_id,_started_at,_submitted_at,_duration_seconds,(scored->>'raw_score')::numeric,(scored->>'total_marks')::numeric,(scored->>'percentage')::numeric,scored->'answers','submitted') RETURNING id INTO attempt_id;
+ RETURN (scored-'answers')||jsonb_build_object('attempt_id',attempt_id);
+END $$;
+
+-- Locked exams permit only a provably equivalent answer representation change.
+CREATE OR REPLACE FUNCTION public.enforce_questions_locked()
+RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER SET search_path=public AS $$
+DECLARE target_exam uuid:=coalesce(NEW.exam_id,OLD.exam_id);
+BEGIN
+ IF target_exam IS NOT NULL AND public.exam_has_attempts(target_exam) THEN
+  IF TG_OP='UPDATE' AND public.is_admin(auth.uid())
+   AND (to_jsonb(NEW)-'correct_answer'-'content_json')=(to_jsonb(OLD)-'correct_answer'-'content_json')
+   AND public.exam_normalize_content(NEW.content_json) IS NOT DISTINCT FROM public.exam_normalize_content(OLD.content_json)
+   AND (NEW.correct_answer IS NOT DISTINCT FROM OLD.correct_answer OR (public.exam_mcq_key(OLD.correct_answer,OLD.options) IS NOT NULL AND public.exam_mcq_key(NEW.correct_answer,NEW.options)=public.exam_mcq_key(OLD.correct_answer,OLD.options)))
+  THEN RETURN NEW; END IF;
+  RAISE EXCEPTION 'Exam is locked: students have already started or completed it';
+ END IF;
+ RETURN coalesce(NEW,OLD);
+END $$;
+
+CREATE OR REPLACE FUNCTION public.exam_grading_maintenance(_dry_run boolean DEFAULT true)
+RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path=public AS $$
+DECLARE response_total int:=0; a record; scored jsonb; samples jsonb:='[]'; changed int:=0; responses int:=0; blocked int:=0; keys_changed int:=0; key text; q record; out_json jsonb; pct numeric; grade text; e record;
+BEGIN
+ IF auth.uid() IS NULL OR NOT public.is_admin(auth.uid()) THEN RAISE EXCEPTION 'Administrator required'; END IF;
+ FOR q IN SELECT * FROM public.questions LOOP
+  key:=CASE WHEN q.question_type IN ('mcq','multiple_choice','objective') THEN public.exam_mcq_key(q.correct_answer,q.options) ELSE q.correct_answer END;
+  out_json:=public.exam_normalize_content(q.content_json);
+  IF (key IS NOT NULL AND key IS DISTINCT FROM q.correct_answer) OR out_json IS DISTINCT FROM q.content_json THEN
+   keys_changed:=keys_changed+1;
+   IF NOT _dry_run THEN UPDATE public.questions SET correct_answer=coalesce(key,correct_answer),content_json=out_json WHERE id=q.id; END IF;
+  END IF;
+ END LOOP;
+ FOR q IN SELECT * FROM public.question_bank WHERE question_type IN ('mcq','multiple_choice','objective') LOOP
+  key:=public.exam_mcq_key(q.correct_answer,q.options);
+  IF key IS NOT NULL AND key IS DISTINCT FROM q.correct_answer THEN keys_changed:=keys_changed+1; IF NOT _dry_run THEN UPDATE public.question_bank SET correct_answer=key WHERE id=q.id; END IF; END IF;
+ END LOOP;
+ FOR a IN SELECT at.*,s.full_name FROM public.exam_attempts at LEFT JOIN public.students s ON s.id=at.student_id WHERE at.submitted_at IS NOT NULL AND at.deleted_at IS NULL ORDER BY at.id FOR UPDATE OF at LOOP
+  SELECT * INTO e FROM public.exams WHERE id=a.exam_id;
+  -- Older legacy randomized letters without saved order cannot be reconstructed.
+  IF coalesce(e.randomize_options,false) AND EXISTS(
+   SELECT 1 FROM public.questions source_q JOIN jsonb_array_elements(a.answers) x ON x->>'question_id'=source_q.id::text
+   WHERE source_q.exam_id=a.exam_id AND source_q.content_json IS NULL AND x->>'student_answer' ~* '^\s*[a-z]\s*$'
+  ) THEN
+   blocked:=blocked+1; samples:=samples||jsonb_build_array(jsonb_build_object('attempt_id',a.id,'student',a.full_name,'blocked','Missing original shuffled-option mapping; no score guessed')); CONTINUE;
+  END IF;
+  scored:=public.exam_score_answers(a.exam_id,a.answers,true);
+  SELECT count(*) INTO responses FROM jsonb_array_elements(scored->'answers') n LEFT JOIN LATERAL (SELECT x FROM jsonb_array_elements(a.answers) x WHERE x->>'question_id'=n->>'question_id' AND coalesce(x->>'sub_key',x->>'question_id')=n->>'sub_key' LIMIT 1) old ON true WHERE n->'is_correct' IS DISTINCT FROM old.x->'is_correct';
+  response_total:=response_total+responses;
+  pct:=(scored->>'percentage')::numeric;
+  grade:=CASE WHEN pct>=70 THEN 'A' WHEN pct>=60 THEN 'B' WHEN pct>=50 THEN 'C' WHEN pct>=45 THEN 'D' WHEN pct>=40 THEN 'E' ELSE 'F' END;
+  samples:=samples||jsonb_build_array(jsonb_build_object('attempt_id',a.id,'student',a.full_name,'before',a.raw_score,'after',(scored->>'raw_score')::numeric,'total',(scored->>'total_marks')::numeric,'percentage',pct,'grade',grade,'pass',CASE WHEN e.pass_mark IS NULL THEN NULL ELSE pct>=e.pass_mark END,'responses_changed',responses));
+  IF a.answers IS DISTINCT FROM scored->'answers' OR a.raw_score IS DISTINCT FROM (scored->>'raw_score')::numeric THEN
+   changed:=changed+1;
+   IF NOT _dry_run THEN
+    UPDATE public.exam_attempts SET answers=scored->'answers',raw_score=(scored->>'raw_score')::numeric,total_marks=(scored->>'total_marks')::numeric,percentage=pct WHERE id=a.id;
+    IF coalesce(e.purpose,'exam')='exam' THEN
+     INSERT INTO public.results(student_id,exam_id,score,grade,remark) VALUES(a.student_id,a.exam_id,round(pct/100*e.max_score,2),grade,'CBT re-graded ('||pct||'%)') ON CONFLICT(student_id,exam_id) DO UPDATE SET score=EXCLUDED.score,grade=EXCLUDED.grade,remark=EXCLUDED.remark;
+    ELSE
+     -- Update only existing auto-generated CA rows; do not duplicate or change teacher entries.
+     UPDATE public.continuous_assessments SET score=round(pct/100*max_score,2) WHERE student_id=a.student_id AND subject_id=e.subject_id AND class_id=e.class_id AND term_id=e.term_id AND ca_type::text=e.purpose AND title=e.title AND recorded_by IS NULL AND deleted_at IS NULL;
+    END IF;
+    INSERT INTO public.exam_audit_log(actor_user_id,action,entity_type,entity_id,meta) VALUES(auth.uid(),'grading_repaired','exam_attempt',a.id,jsonb_build_object('before',jsonb_build_object('raw_score',a.raw_score,'total_marks',a.total_marks,'percentage',a.percentage,'answers',a.answers),'after',scored));
+   END IF;
+  END IF;
+ END LOOP;
+ RETURN jsonb_build_object('dry_run',_dry_run,'question_keys_changed',keys_changed,'attempts_changed',changed,'responses_changed',response_total,'blocked_attempts',blocked,'samples',samples);
+END $$;
+
+-- Helpers read private answer keys; only privileged owners and guarded definer routines may invoke them.
+REVOKE ALL ON FUNCTION public.exam_grade_units(uuid),public.exam_score_answers(uuid,jsonb,boolean) FROM PUBLIC,anon,authenticated;
+GRANT EXECUTE ON FUNCTION public.exam_grade_units(uuid),public.exam_score_answers(uuid,jsonb,boolean) TO service_role;
+REVOKE ALL ON FUNCTION public.exam_grading_maintenance(boolean),public.submit_exam_attempt(uuid,uuid,timestamptz,timestamptz,integer,jsonb) FROM PUBLIC,anon;
+GRANT EXECUTE ON FUNCTION public.exam_grading_maintenance(boolean),public.submit_exam_attempt(uuid,uuid,timestamptz,timestamptz,integer,jsonb) TO authenticated;
+CREATE OR REPLACE FUNCTION public.canonicalize_exam_question_key()
+RETURNS trigger LANGUAGE plpgsql SET search_path=public AS $$
+DECLARE key text;
+BEGIN
+ IF NEW.question_type IN ('mcq','multiple_choice','objective') THEN
+  key:=public.exam_mcq_key(NEW.correct_answer,NEW.options);
+  IF key IS NOT NULL THEN NEW.correct_answer:=key; END IF;
+ END IF;
+ IF TG_TABLE_NAME='questions' THEN NEW.content_json:=public.exam_normalize_content(NEW.content_json); END IF;
+ RETURN NEW;
+END $$;
+CREATE TRIGGER canonicalize_question_key BEFORE INSERT OR UPDATE ON public.questions FOR EACH ROW EXECUTE FUNCTION public.canonicalize_exam_question_key();
+CREATE TRIGGER canonicalize_bank_key BEFORE INSERT OR UPDATE ON public.question_bank FOR EACH ROW EXECUTE FUNCTION public.canonicalize_exam_question_key();

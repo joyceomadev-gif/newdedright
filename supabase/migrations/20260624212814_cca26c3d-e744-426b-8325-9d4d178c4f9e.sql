@@ -1,0 +1,1 @@
+ALTER TABLE public.exam_attempts ADD CONSTRAINT exam_attempts_unique_per_student UNIQUE (exam_id, student_id);

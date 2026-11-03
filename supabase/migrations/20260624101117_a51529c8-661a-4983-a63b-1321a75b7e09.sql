@@ -1,0 +1,1 @@
+INSERT INTO public.school_settings (id, school_name) VALUES (1, 'De-Bright Group of Schools') ON CONFLICT (id) DO UPDATE SET school_name = EXCLUDED.school_name;

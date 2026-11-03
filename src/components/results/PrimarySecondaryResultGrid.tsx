@@ -1,0 +1,411 @@
+import { useState, useMemo, useEffect } from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
+import { Card } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Label } from "@/components/ui/label";
+import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Loader2, Save, GraduationCap, Search, CheckCircle2, AlertCircle } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+import {
+  useResolvedAssessmentStructure,
+  useResolvedGradingScale,
+  validateComponentScore,
+  gradeForDynamicScale,
+  computeDynamicTotalScore,
+  AssessmentComponent,
+} from "@/lib/assessment-config";
+import { formatTermName } from "@/lib/scoring";
+
+interface StudentRow { id: string; full_name: string; admission_no: string | null }
+interface SubjectRow { id: string; name: string }
+interface ClassRow { id: string; name: string; level?: string }
+interface TermRow { id: string; name: string; is_current: boolean; session_id: string }
+interface SessionRow { id: string; name: string; is_current: boolean }
+
+// studentId -> subjectId -> componentCode -> score
+type BroadsheetState = Record<string, Record<string, Record<string, number | null>>>;
+
+export function PrimarySecondaryResultGrid() {
+  const qc = useQueryClient();
+  const [sessionId, setSessionId] = useState<string | undefined>();
+  const [termId, setTermId] = useState<string | undefined>();
+  const [classId, setClassId] = useState<string | undefined>();
+  const [searchQuery, setSearchQuery] = useState("");
+  const [gridData, setGridData] = useState<BroadsheetState>({});
+
+  const { data: sessions } = useQuery({
+    queryKey: ["psgrid-sessions"],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("sessions").select("id,name,is_current").order("start_date", { ascending: false });
+      if (error) throw error;
+      return (data ?? []) as SessionRow[];
+    },
+  });
+  const currentSession = (sessions ?? []).find((s) => s.is_current);
+
+  const { data: terms } = useQuery({
+    queryKey: ["psgrid-terms", sessionId],
+    enabled: !!(sessionId ?? currentSession?.id),
+    queryFn: async () => {
+      const { data, error } = await supabase.from("terms")
+        .select("id,name,is_current,session_id")
+        .eq("session_id", (sessionId ?? currentSession?.id)!)
+        .order("start_date");
+      if (error) throw error;
+      return (data ?? []) as TermRow[];
+    },
+  });
+  const currentTerm = (terms ?? []).find((t) => t.is_current);
+
+  const { data: classes } = useQuery({
+    queryKey: ["psgrid-classes"],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("classes").select("id,name,level").order("name");
+      if (error) throw error;
+      return (data ?? []) as ClassRow[];
+    },
+  });
+  const selectedClassObj = (classes ?? []).find((c) => c.id === classId);
+
+  const { data: subjects } = useQuery({
+    queryKey: ["psgrid-subjects"],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("subjects").select("id,name").order("name");
+      if (error) throw error;
+      return (data ?? []) as SubjectRow[];
+    },
+  });
+
+  const effSession = sessionId ?? currentSession?.id;
+  const effTerm = termId ?? currentTerm?.id;
+  const scopeReady = !!effSession && !!effTerm && !!classId;
+
+  // Resolve assessment structure for this class/level (consistent args across consumers: I1)
+  const { data: activeStructure } = useResolvedAssessmentStructure(classId, null, effTerm, effSession, selectedClassObj?.level);
+  // Resolve grading scale
+  const { data: activeGradingScale } = useResolvedGradingScale(classId, null, selectedClassObj?.level);
+
+  // Fallback assessment components if no custom structure exists
+  const componentsList: AssessmentComponent[] = useMemo(() => {
+    if (activeStructure?.components && activeStructure.components.length > 0) {
+      return activeStructure.components;
+    }
+    return [
+      { id: "1", code: "CA1", name: "Continuous Assessment 1", max_score: 15, weight_percentage: 15, display_order: 1, is_mandatory: true },
+      { id: "2", code: "CA2", name: "Continuous Assessment 2", max_score: 15, weight_percentage: 15, display_order: 2, is_mandatory: true },
+      { id: "3", code: "EXAM", name: "End of Term Exam", max_score: 70, weight_percentage: 70, display_order: 3, is_mandatory: true },
+    ];
+  }, [activeStructure]);
+
+  const { data: students, isLoading: loadingStudents } = useQuery({
+    queryKey: ["psgrid-students", classId],
+    enabled: !!classId,
+    queryFn: async () => {
+      const { data, error } = await supabase.from("students")
+        .select("id,full_name,admission_no")
+        .eq("class_id", classId!)
+        .order("full_name");
+      if (error) throw error;
+      return (data ?? []) as StudentRow[];
+    },
+  });
+
+  // Fetch existing continuous assessment scores for this scope
+  const { data: existingScores } = useQuery({
+    queryKey: ["psgrid-existing-scores", classId, effTerm],
+    enabled: scopeReady,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("continuous_assessments")
+        .select("student_id,subject_id,ca_type,score")
+        .eq("class_id", classId!)
+        .eq("term_id", effTerm!);
+      if (error) throw error;
+      return data || [];
+    },
+  });
+
+  // Pre-populate gridData from existing database scores
+  useEffect(() => {
+    if (!existingScores || existingScores.length === 0) return;
+    const initial: BroadsheetState = {};
+    for (const r of existingScores) {
+      if (!initial[r.student_id]) initial[r.student_id] = {};
+      if (!initial[r.student_id][r.subject_id]) initial[r.student_id][r.subject_id] = {};
+      const code = (r.ca_type || "").toUpperCase();
+      initial[r.student_id][r.subject_id][code] = Number(r.score) || 0;
+    }
+    setGridData((prev) => ({ ...initial, ...prev }));
+  }, [existingScores]);
+
+  // Filter students
+  const filteredStudents = useMemo(() => {
+    if (!students) return [];
+    if (!searchQuery.trim()) return students;
+    const q = searchQuery.toLowerCase();
+    return students.filter(
+      (s) => s.full_name.toLowerCase().includes(q) || s.admission_no?.toLowerCase().includes(q)
+    );
+  }, [students, searchQuery]);
+
+  function updateScore(studentId: string, subjectId: string, compCode: string, value: number | null) {
+    setGridData((prev) => ({
+      ...prev,
+      [studentId]: {
+        ...(prev[studentId] || {}),
+        [subjectId]: {
+          ...(prev[studentId]?.[subjectId] || {}),
+          [compCode]: value,
+        },
+      },
+    }));
+  }
+
+  const saveMutation = useMutation({
+    mutationFn: async () => {
+      const studentIds = Object.keys(gridData);
+      if (studentIds.length === 0) return;
+
+      const VALID_CA_TYPES = new Set(["ca1", "ca2", "ca3", "test", "project", "classwork", "homework", "exam", "other"]);
+      const caPayload: any[] = [];
+      for (const stId of studentIds) {
+        const subjectScores = gridData[stId] || {};
+        for (const [subId, comps] of Object.entries(subjectScores)) {
+          for (const [code, val] of Object.entries(comps)) {
+            if (val != null) {
+              const comp = componentsList.find((c) => c.code === code);
+              const rawCode = code.toLowerCase().trim();
+              const caType = VALID_CA_TYPES.has(rawCode) ? rawCode : "other";
+              caPayload.push({
+                student_id: stId,
+                class_id: classId,
+                subject_id: subId,
+                term_id: effTerm,
+                ca_type: caType,
+                score: val,
+                max_score: comp?.max_score || 100,
+              });
+            }
+          }
+        }
+      }
+
+      if (caPayload.length > 0) {
+        const { error } = await supabase.from("continuous_assessments").upsert(caPayload);
+        if (error) throw error;
+      }
+    },
+    onSuccess: () => {
+      toast.success("Primary / Secondary result grid saved successfully");
+      setGridData({});
+      qc.invalidateQueries({ queryKey: ["gradebook-ca"] });
+      qc.invalidateQueries({ queryKey: ["processed-results"] });
+    },
+    onError: (err: any) => toast.error(err.message),
+  });
+
+  return (
+    <div className="space-y-4">
+      <Card className="p-4 space-y-4">
+        <div className="flex items-center justify-between flex-wrap gap-2">
+          <div>
+            <h3 className="text-base font-semibold flex items-center gap-2">
+              <GraduationCap className="h-4 w-4 text-primary" /> Primary & Secondary Broadsheet Result Entry Grid
+            </h3>
+            <p className="text-xs text-muted-foreground">
+              Students as rows, subjects as column groups (`CA1`, `CA2`, `Mid-Term`, `Exam`, `Total`, `Grade`). Automatic score validation & totals.
+            </p>
+          </div>
+          {scopeReady && Object.keys(gridData).length > 0 && (
+            <Button size="sm" onClick={() => saveMutation.mutate()} disabled={saveMutation.isPending} className="gap-1.5">
+              {saveMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+              Save Result Grid ({Object.keys(gridData).length})
+            </Button>
+          )}
+        </div>
+
+        <div className="grid gap-3 sm:grid-cols-3">
+          <div className="space-y-1">
+            <Label className="text-xs">Session</Label>
+            <Select value={sessionId ?? currentSession?.id} onValueChange={setSessionId}>
+              <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Select session" /></SelectTrigger>
+              <SelectContent>{(sessions ?? []).map((s) => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}</SelectContent>
+            </Select>
+          </div>
+
+          <div className="space-y-1">
+            <Label className="text-xs">Term</Label>
+            <Select value={termId ?? currentTerm?.id} onValueChange={setTermId}>
+              <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Select term" /></SelectTrigger>
+              <SelectContent>{(terms ?? []).map((t) => <SelectItem key={t.id} value={t.id}>{formatTermName(t.name)}</SelectItem>)}</SelectContent>
+            </Select>
+          </div>
+
+          <div className="space-y-1">
+            <Label className="text-xs">Class</Label>
+            <Select value={classId} onValueChange={setClassId}>
+              <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Select class" /></SelectTrigger>
+              <SelectContent>{(classes ?? []).map((c) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}</SelectContent>
+            </Select>
+          </div>
+        </div>
+      </Card>
+
+      {!scopeReady ? (
+        <Card className="p-6 text-center text-sm text-muted-foreground">
+          Select Session, Term, and Class to open the Primary / Secondary Broadsheet Result Grid.
+        </Card>
+      ) : (
+        <Card className="p-0 overflow-x-auto">
+          <div className="p-3 border-b flex items-center justify-between gap-3 bg-muted/20">
+            <div className="relative w-64">
+              <Search className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-muted-foreground" />
+              <Input
+                placeholder="Search student name or admission no…"
+                className="pl-8 h-8 text-xs"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+              />
+            </div>
+            <div className="text-xs text-muted-foreground">
+              Active Structure: <span className="font-semibold text-primary">{activeStructure?.name || "Standard 15/15/70"}</span>
+            </div>
+          </div>
+
+          <Table className="text-xs">
+            <TableHeader>
+              {/* Header Level 1: Subjects Grouping */}
+              <TableRow className="bg-muted/60 divide-x">
+                <TableHead className="min-w-[180px]" rowSpan={2}>Student Name</TableHead>
+                <TableHead className="w-24" rowSpan={2}>Admission No</TableHead>
+                {(subjects || []).map((sub, idx) => (
+                  <TableHead
+                    key={sub.id}
+                    colSpan={componentsList.length + 2}
+                    className={`text-center font-bold border-l border-r-2 border-r-primary/40 ${
+                      idx % 2 === 0 ? "bg-primary/15 text-primary" : "bg-muted/80 text-foreground"
+                    }`}
+                  >
+                    <div className="flex items-center justify-center gap-1.5">
+                      <span className="text-[10px] font-mono font-medium uppercase px-1.5 py-0.5 rounded bg-background/80 border text-muted-foreground shadow-xs">
+                        Subject {idx + 1}
+                      </span>
+                      <span>{sub.name}</span>
+                    </div>
+                  </TableHead>
+                ))}
+                <TableHead className="w-28 text-center" rowSpan={2}>Overall Average (%)</TableHead>
+              </TableRow>
+
+              {/* Header Level 2: Components per Subject */}
+              <TableRow className="bg-muted/30 divide-x">
+                {(subjects || []).flatMap((sub) => [
+                  ...componentsList.map((c) => (
+                    <TableHead key={`${sub.id}-${c.code}`} className="text-center w-16 px-1 font-mono text-[11px]" title={`${c.name} (Max: ${c.max_score})`}>
+                      {c.code}
+                    </TableHead>
+                  )),
+                  <TableHead key={`${sub.id}-total`} className="text-center w-16 px-1 font-bold">Total</TableHead>,
+                  <TableHead key={`${sub.id}-grade`} className="text-center w-14 px-1 font-bold border-r-2 border-r-primary/40">Grade</TableHead>,
+                ])}
+              </TableRow>
+            </TableHeader>
+
+            <TableBody>
+              {loadingStudents ? (
+                <TableRow><TableCell colSpan={((subjects?.length || 0) * (componentsList.length + 2)) + 3} className="text-center py-8 text-sm text-muted-foreground"><Loader2 className="h-4 w-4 animate-spin inline mr-2" />Loading students…</TableCell></TableRow>
+              ) : filteredStudents.length === 0 ? (
+                <TableRow><TableCell colSpan={((subjects?.length || 0) * (componentsList.length + 2)) + 3} className="text-center py-8 text-sm text-muted-foreground">No students found in this class.</TableCell></TableRow>
+              ) : (
+                filteredStudents.map((st) => {
+                  const studentData = gridData[st.id] || {};
+                  let grandTotalScore = 0;
+                  let countedSubjects = 0;
+
+                  return (
+                    <TableRow key={st.id} className="divide-x">
+                      <TableCell className="font-medium text-xs">
+                        {st.full_name}
+                      </TableCell>
+                      <TableCell className="text-xs font-mono text-muted-foreground">
+                        {st.admission_no || "—"}
+                      </TableCell>
+
+                      {(subjects || []).map((sub) => {
+                        const subScores = studentData[sub.id] || {};
+                        const computedVal = computeDynamicTotalScore(componentsList, subScores);
+                        const hasSubScore = computedVal != null;
+                        const subTotal = computedVal ?? 0;
+                        const totalStructureWeight = componentsList.reduce((a, b) => a + (b.weight_percentage || b.max_score || 0), 0) || 100;
+
+                        if (hasSubScore) {
+                          const normalizedPct = (subTotal / totalStructureWeight) * 100;
+                          grandTotalScore += normalizedPct;
+                          countedSubjects += 1;
+                        }
+
+                        const evaluatedGrade = activeGradingScale?.bands
+                          ? gradeForDynamicScale(activeGradingScale.bands, hasSubScore ? subTotal : null)
+                          : null;
+
+                        return (
+                          <>
+                            {componentsList.map((c) => {
+                              const val = subScores[c.code];
+                              const err = validateComponentScore(val, c.max_score, c.code);
+                              const isInvalid = !!err;
+
+                              return (
+                                <TableCell key={`${sub.id}-${c.code}`} className="p-1 text-center">
+                                  <Input
+                                    type="number"
+                                    className={`h-7 w-14 mx-auto text-center font-semibold text-xs tabular-nums ${
+                                      isInvalid ? "border-red-500 bg-red-50 text-red-700" : ""
+                                    }`}
+                                    title={err || `${c.name} (Max: ${c.max_score})`}
+                                    value={val ?? ""}
+                                    onChange={(e) => {
+                                      const raw = e.target.value;
+                                      if (raw === "") { updateScore(st.id, sub.id, c.code, null); return; }
+                                      const n = Number(raw);
+                                      if (!isNaN(n)) updateScore(st.id, sub.id, c.code, n);
+                                    }}
+                                  />
+                                </TableCell>
+                              );
+                            })}
+
+                            <TableCell className="text-center font-bold text-xs tabular-nums text-primary bg-muted/10">
+                              {hasSubScore ? subTotal : "—"}
+                            </TableCell>
+
+                            <TableCell className="text-center font-bold text-xs border-r-2 border-r-primary/40">
+                              {evaluatedGrade?.grade ? (
+                                <Badge variant="outline" className="px-1.5 py-0 text-[10px] font-mono">
+                                  {evaluatedGrade.grade}
+                                </Badge>
+                              ) : "—"}
+                            </TableCell>
+                          </>
+                        );
+                      })}
+
+
+                      <TableCell className="text-center font-bold text-xs tabular-nums text-primary bg-primary/5">
+                        {countedSubjects > 0 ? (Math.round((grandTotalScore / countedSubjects) * 100) / 100) + "%" : "—"}
+                      </TableCell>
+                    </TableRow>
+                  );
+                })
+              )}
+            </TableBody>
+          </Table>
+        </Card>
+      )}
+    </div>
+  );
+}

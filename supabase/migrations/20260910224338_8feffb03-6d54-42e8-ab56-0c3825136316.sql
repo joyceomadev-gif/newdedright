@@ -1,0 +1,1 @@
+ALTER TYPE public.ca_type ADD VALUE IF NOT EXISTS 'exam';
