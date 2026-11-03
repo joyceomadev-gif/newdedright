@@ -35,9 +35,7 @@ import {
   Eye,
   EyeOff,
   FileText,
-  Sparkles,
 } from "lucide-react";
-import { AiGenerateDialog } from "./AiGenerateDialog";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -64,7 +62,6 @@ interface Props {
 
 export function QuestionBuilder({ doc, onChange }: Props) {
   const [showPreview, setShowPreview] = useState(false);
-  const [aiOpen, setAiOpen] = useState(false);
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 4 } }));
 
   const totalMarks = useMemo(() => doc.items.reduce((a, it) => a + itemTotalMarks(it), 0), [doc]);
@@ -165,9 +162,6 @@ export function QuestionBuilder({ doc, onChange }: Props) {
         <Button size="sm" variant="outline" className="gap-1" onClick={addGroup}>
           <Layers className="h-4 w-4" /> Question Group
         </Button>
-        <Button size="sm" variant="secondary" className="gap-1" onClick={() => setAiOpen(true)}>
-          <Sparkles className="h-4 w-4" /> Generate with AI
-        </Button>
         <div className="ml-auto flex items-center gap-2">
           <Badge variant="secondary">{totalQuestions} question{totalQuestions === 1 ? "" : "s"}</Badge>
           <Badge variant="outline">{totalMarks} marks</Badge>
@@ -217,11 +211,6 @@ export function QuestionBuilder({ doc, onChange }: Props) {
         </DndContext>
       )}
 
-      <AiGenerateDialog
-        open={aiOpen}
-        onClose={() => setAiOpen(false)}
-        onInsert={(items) => onChange({ ...doc, items: [...doc.items, ...items] })}
-      />
     </div>
   );
 }

@@ -2,7 +2,6 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useState, type FormEvent } from "react";
 import schoolLogoAsset from "@/assets/de-bright-logo.png.asset.json";
 import { supabase } from "@/integrations/supabase/client";
-import { lovable } from "@/integrations/lovable";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -10,7 +9,6 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { AlertCircle } from "lucide-react";
 import { PasswordInput } from "@/components/PasswordInput";
-import { toast } from "sonner";
 
 export const Route = createFileRoute("/login")({
   component: LoginPage,
@@ -22,21 +20,18 @@ function LoginPage() {
   const [password, setPassword] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
-  const [suggestGoogle, setSuggestGoogle] = useState(false);
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
     setSubmitting(true);
     setErrorMsg(null);
-    setSuggestGoogle(false);
     const { error } = await supabase.auth.signInWithPassword({ email, password });
     setSubmitting(false);
     if (error) {
       const code = (error as { code?: string }).code;
       if (code === "invalid_credentials" || error.message.toLowerCase().includes("invalid login")) {
-        setSuggestGoogle(true);
         setErrorMsg(
-          "We couldn't sign you in with that email and password. If you originally signed up with Google, use \"Continue with Google\" below instead.",
+          "We couldn't sign you in with that email and password. Check them and try again, or use \"Forgot password?\".",
         );
       } else if (code === "email_not_confirmed") {
         setErrorMsg("Please confirm your email address before signing in. Check your inbox for the verification link.");
@@ -46,13 +41,6 @@ function LoginPage() {
       return;
     }
     navigate({ to: "/dashboard" });
-  }
-
-  async function handleGoogle() {
-    const result = await lovable.auth.signInWithOAuth("google", {
-      redirect_uri: window.location.origin,
-    });
-    if (result.error) toast.error("Google sign-in failed");
   }
 
   return (
@@ -87,19 +75,6 @@ function LoginPage() {
               {submitting ? "Signing in…" : "Sign In"}
             </Button>
           </form>
-          <div className="relative">
-            <div className="absolute inset-0 flex items-center"><span className="w-full border-t" /></div>
-            <div className="relative flex justify-center text-xs uppercase">
-              <span className="bg-card px-2 text-muted-foreground">Or</span>
-            </div>
-          </div>
-          <Button
-            variant={suggestGoogle ? "default" : "outline"}
-            className="w-full"
-            onClick={handleGoogle}
-          >
-            Continue with Google
-          </Button>
           <p className="text-center text-sm text-muted-foreground">
             Don't have an account?{" "}
             <Link to="/signup" className="text-primary font-medium hover:underline">Sign up</Link>
