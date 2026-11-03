@@ -1,4 +1,4 @@
--- Brings the new database in line with the old Lovable Cloud database.
+-- Brings the new database in line with the old database.
 -- These objects existed in the old live database but were never saved as migration files.
 -- Written from the old database's own catalog. Safe to re-run (IF NOT EXISTS / guarded blocks).
 

@@ -9,7 +9,7 @@
  *   3. Seed at least one class + subject + a few CA/exam scores
  *   4. Remove `.skip` below and run: bunx playwright test
  *
- * Cannot run inside the Lovable build sandbox (no Playwright browsers,
+ * Cannot run inside the restricted build sandbox (no Playwright browsers,
  * no seeded admin auth state).
  */
 // @ts-nocheck — guarded by .skip; @playwright/test is not installed by default
