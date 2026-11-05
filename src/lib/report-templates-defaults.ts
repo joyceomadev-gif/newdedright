@@ -78,7 +78,7 @@ export const DEFAULT_GRADE_SCALE: GradeBand[] = [
 
 export const NURSERY_GLITTERS_ONE: TemplateLayout = {
   kind: "competency",
-  header: { schoolName: "De-Bright Group of Schools", tagline: "3rd Term Assessment Report" },
+  header: { schoolName: "", tagline: "3rd Term Assessment Report" },
   ratingScale: NURSERY_RATING,
   competencyAreas: [
     {
@@ -171,7 +171,7 @@ export const NURSERY_GLITTERS_ONE: TemplateLayout = {
 
 export const NURSERY_GLITTERS_TWO: TemplateLayout = {
   kind: "competency",
-  header: { schoolName: "De-Bright Group of Schools", tagline: "3rd Term Assessment Report" },
+  header: { schoolName: "", tagline: "3rd Term Assessment Report" },
   ratingScale: NURSERY_RATING,
   competencyAreas: [
     {
@@ -254,7 +254,7 @@ export const NURSERY_GLITTERS_TWO: TemplateLayout = {
 export const PRIMARY_SCORE_DEFAULT: TemplateLayout = {
   kind: "score",
   header: {
-    schoolName: "De-Bright Group of Schools",
+    schoolName: "",
     address: "50 4th Ave, Festac Town, Lagos 102102, Lagos",
     tagline: "Terminal Report Sheet",
     showLogo: true,

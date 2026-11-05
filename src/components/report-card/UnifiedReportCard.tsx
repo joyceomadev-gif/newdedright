@@ -23,7 +23,7 @@
 
 import type { TemplateLayout } from "@/lib/report-templates-defaults";
 import { DEFAULT_GRADE_SCALE, NURSERY_RATING } from "@/lib/report-templates-defaults";
-import logo from "@/assets/de-bright-logo.png.asset.json";
+import { BrandLogo, BrandName } from "@/lib/branding";
 
 export interface StudentInfo {
   name?: string;
@@ -137,11 +137,11 @@ export function UnifiedReportCard({
       {/* ─── Header ─────────────────────────────────────────────────── */}
       <header className="rc-header flex items-stretch gap-3 border-b-2 border-primary pb-2 mb-3">
         {h.showLogo !== false && (
-          <img src={logo.url} alt="School logo" className="h-16 w-auto object-contain" />
+          <BrandLogo className="h-16 w-auto object-contain" />
         )}
         <div className="flex-1 text-center flex flex-col justify-center">
           <div className="text-lg font-bold uppercase tracking-wide">
-            {h.schoolName || "De-Bright Group of Schools"}
+            {h.schoolName || <BrandName />}
           </div>
           {h.address && <div className="text-[10px] italic">{h.address}</div>}
           {h.tagline && (

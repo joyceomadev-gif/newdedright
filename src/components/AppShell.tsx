@@ -1,6 +1,6 @@
 import { Link, Outlet, useLocation, useNavigate } from "@tanstack/react-router";
 import { LogOut, Bell, Menu, ShieldAlert } from "lucide-react";
-import schoolLogo from "@/assets/de-bright-logo.png.asset.json";
+import { BrandLogo, BrandName } from "@/lib/branding";
 import { useState } from "react";
 import { useAuth } from "@/lib/auth-context";
 import { MODULES, QUESTION_BANK_NAV } from "@/lib/modules";
@@ -56,8 +56,8 @@ export function AppShell() {
         <Button variant="ghost" size="icon" className="lg:hidden text-primary-foreground hover:bg-white/10" onClick={() => setOpen(!open)}>
           <Menu className="h-5 w-5" />
         </Button>
-        <img src={schoolLogo.url} alt="De-Bright Group of Schools" className="h-8 w-auto rounded bg-white/10 p-0.5" />
-        <h1 className="font-semibold text-lg">De-Bright Group of Schools</h1>
+        <BrandLogo className="h-8 w-auto rounded bg-white/10 p-0.5" />
+        <h1 className="font-semibold text-lg"><BrandName /></h1>
         <div className="ml-auto flex items-center gap-2">
           <Button variant="ghost" size="icon" className="text-primary-foreground hover:bg-white/10">
             <Bell className="h-5 w-5" />

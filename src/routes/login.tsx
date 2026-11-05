@@ -1,6 +1,6 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useState, type FormEvent } from "react";
-import schoolLogoAsset from "@/assets/de-bright-logo.png.asset.json";
+import { BrandLogo, BrandName } from "@/lib/branding";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -47,9 +47,9 @@ function LoginPage() {
     <div className="min-h-screen flex items-center justify-center bg-muted px-4">
       <Card className="w-full max-w-md">
         <CardHeader className="text-center space-y-2">
-          <img src={schoolLogoAsset.url} alt="De-Bright Group of Schools" className="mx-auto h-16 w-auto object-contain" />
-          <CardTitle className="text-2xl">De-Bright Group of Schools</CardTitle>
-          <CardDescription>School management solution by ZGIL for De-Bright Group of Schools</CardDescription>
+          <BrandLogo className="mx-auto h-16 w-auto object-contain" />
+          <CardTitle className="text-2xl"><BrandName /></CardTitle>
+          <CardDescription>School management portal</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <form onSubmit={handleSubmit} className="space-y-4">

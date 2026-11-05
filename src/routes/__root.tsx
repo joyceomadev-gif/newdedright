@@ -12,7 +12,6 @@ import appCss from "../styles.css?url";
 import { AuthProvider } from "@/lib/auth-context";
 import { Toaster } from "@/components/ui/sonner";
 import { UnsupportedBrowserBanner } from "@/components/unsupported-browser-banner";
-import schoolLogo from "@/assets/de-bright-logo.png.asset.json";
 
 function NotFoundComponent() {
   return (

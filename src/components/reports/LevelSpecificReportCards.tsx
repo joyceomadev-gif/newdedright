@@ -288,7 +288,7 @@ function LevelSpecificReportCardsContent() {
             <div className="flex items-center gap-3">
               <Building2 className="h-8 w-8 text-primary" />
               <div>
-                <h2 className="text-lg font-bold">{schoolSetting?.school_name || "De-Bright Group of Schools"}</h2>
+                <h2 className="text-lg font-bold">{schoolSetting?.school_name || ""}</h2>
                 <p className="text-xs text-muted-foreground capitalize">
                   {resolvedTemplateMode.replace("_", " ")} Report Card
                 </p>
