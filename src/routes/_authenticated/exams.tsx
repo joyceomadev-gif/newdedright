@@ -73,9 +73,9 @@ function toOptionStrings(o: unknown): string[] {
 
 export const Route = createFileRoute("/_authenticated/exams")({
   head: () => ({ meta: [
-    { title: "Examinations — De-Bright Group of Schools" },
+    { title: "Examinations" },
     { name: "description", content: "Manage examinations, question banks and student results at De-Bright Group of Schools." },
-    { property: "og:title", content: "Examinations — De-Bright Group of Schools" },
+    { property: "og:title", content: "Examinations" },
     { property: "og:description", content: "Manage examinations, question banks and student results at De-Bright Group of Schools." },
     { property: "og:type", content: "website" },
     { name: "twitter:card", content: "summary" },

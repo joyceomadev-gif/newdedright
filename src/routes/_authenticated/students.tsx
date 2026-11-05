@@ -59,7 +59,7 @@ import { PasswordInput } from "@/components/PasswordInput";
 import { StudentImportDialog } from "@/components/StudentImportDialog";
 
 export const Route = createFileRoute("/_authenticated/students")({
-  head: () => ({ meta: [{ title: "Students — De-Bright Group of Schools" }, { name: "description", content: "Manage student records and admissions at De-Bright Group of Schools." }, { property: "og:title", content: "Students — De-Bright Group of Schools" }, { property: "og:description", content: "Student records and admissions." }, { property: "og:type", content: "website" }, { name: "twitter:card", content: "summary" }] }),
+  head: () => ({ meta: [{ title: "Students" }, { name: "description", content: "Manage student records and admissions at De-Bright Group of Schools." }, { property: "og:title", content: "Students — De-Bright Group of Schools" }, { property: "og:description", content: "Student records and admissions." }, { property: "og:type", content: "website" }, { name: "twitter:card", content: "summary" }] }),
   component: StudentsPage,
 });
 

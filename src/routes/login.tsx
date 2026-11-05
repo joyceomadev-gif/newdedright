@@ -49,7 +49,7 @@ function LoginPage() {
         <CardHeader className="text-center space-y-2">
           <BrandLogo className="mx-auto h-16 w-auto object-contain" />
           <CardTitle className="text-2xl"><BrandName /></CardTitle>
-          <CardDescription>School management portal</CardDescription>
+          <CardDescription>School management portal by ZGILS</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <form onSubmit={handleSubmit} className="space-y-4">

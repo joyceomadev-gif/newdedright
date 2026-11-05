@@ -145,7 +145,7 @@ export function AppShell() {
       </div>
 
       <footer className="border-t bg-background text-center text-xs text-muted-foreground py-3">
-        © 2026 edition — De-Bright Group of Schools
+        © 2026 edition — <BrandName />
       </footer>
     </div>
   );

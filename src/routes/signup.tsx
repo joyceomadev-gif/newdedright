@@ -57,7 +57,7 @@ function SignupPage() {
             <GraduationCap className="h-6 w-6" />
           </div>
           <CardTitle className="text-2xl">Create account</CardTitle>
-          <CardDescription>School management solution by ZGIL for De-Bright Group of Schools</CardDescription>
+          <CardDescription>School management portal by ZGILS</CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">

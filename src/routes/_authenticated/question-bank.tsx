@@ -7,13 +7,13 @@ export const Route = createFileRoute("/_authenticated/question-bank")({
   validateSearch: parseBankSearch,
   head: () => ({
     meta: [
-      { title: "Question Bank | De-Bright Group of Schools" },
+      { title: "Question Bank" },
       {
         name: "description",
         content:
           "Browse De-Bright school questions by class, subject, difficulty and approval status.",
       },
-      { property: "og:title", content: "Question Bank | De-Bright Group of Schools" },
+      { property: "og:title", content: "Question Bank" },
       {
         property: "og:description",
         content: "Organised class and subject question bank for De-Bright staff.",
