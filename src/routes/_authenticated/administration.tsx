@@ -1,7 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
+import { supabase } from "@/integrations/supabase/client"; import { LogoUploader } from "@/components/LogoUploader";
 import { fetchAllPaged } from "@/lib/paginated-fetch";
 import { fetchAdminRoleRows } from "@/lib/admin-role-rows";
 import { PaginationBar, usePagedSlice } from "@/components/ui/pagination-bar";
@@ -614,6 +614,7 @@ function SettingsTab() {
               onChange={(e) => setDraft({ ...current, promotion_min_average: Number(e.target.value) })} />
           </Field>
         </div>
+        <div className='mt-4 border-t pt-4'><LogoUploader /></div>
       </Card>
 
       <Card className="p-4">
