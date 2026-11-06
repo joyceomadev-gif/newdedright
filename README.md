@@ -1,28 +1,27 @@
-# De Bright
+# School Management Portal
 
-lets build a complete school management system called GILA schools.
-detailed.  There are 13 modules in all.  all functions to have create, view and edit actions based on user role.
- do you want the overall database table first, the complete documentation or module by module.
+A web application for running a school: students, staff, classes, subjects, computer-based exams, results and report cards, finance records and more.
 
-This project was built with [Lovable](https://lovable.dev).
+Built with TanStack Start (React), Tailwind CSS and Supabase (database, sign-in and file storage).
 
-**Live app**: https://de-bright-campus-compass.lovable.app
+## Run it on your computer
 
-## Build with Lovable
+1. Install Node.js 22, then run `npm install`.
+2. Copy `.env.example` to `.env` and fill in the values from your Supabase project (Project Settings, then API).
+3. Run `npm run dev` and open http://localhost:8080.
 
-Continue developing this project in the [Lovable editor](https://lovable.dev/projects/7beeeb3b-273a-4614-8cde-3ad130acb995).
+## Database
 
-- **Ship faster**: describe what you want to build and Lovable handles the code.
-- **Stay in sync**: every change made in Lovable is committed straight to this repository.
-- **Full ownership**: this code is yours. Push to `main` on GitHub and your changes sync back into Lovable, ready for your next prompt.
+The database structure is in `supabase/migrations`. To build it in a new Supabase project:
 
-## Development
+1. `npx supabase login`
+2. `npx supabase link --project-ref YOUR_PROJECT_REF`
+3. `npx supabase db push --linked`
 
-Prefer working locally? You need Node.js and npm — [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating).
+## School name and logo
 
-```sh
-git clone <this-repository-url>
-cd <repository-name>
-npm i
-npm run dev
-```
+Each school sets its own name and logo in Administration, then General. Nothing school-specific is written in the code.
+
+## Publishing
+
+The project builds with `npm run build` and deploys from GitHub to Vercel. Add the variables listed in `.env.example` in the host's environment settings, and keep secret keys out of the repository.
