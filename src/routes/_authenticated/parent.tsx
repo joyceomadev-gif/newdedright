@@ -1,6 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
-import { initializeFeePayment } from "@/lib/paystack.functions";
 import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -510,7 +509,7 @@ function FeesTab({ child }: { child: Child }) {
                 <TableCell><FeeStatusBadge status={f.status} /></TableCell>
                 <TableCell className="text-right">
                   {f.status !== "paid" ? (
-                    <PayFeeButton fee={f} child={child} />
+                    <></>
                   ) : (
                     <span className="text-xs text-muted-foreground">{f.reference ?? "—"}</span>
                   )}
@@ -534,44 +533,6 @@ function FeeStatusBadge({ status }: { status: string }) {
   return <Badge variant={variant[status] ?? "outline"}>{status}</Badge>;
 }
 
-function PayFeeButton({ fee, child }: { fee: Fee; child: Child }) {
-  const [busy, setBusy] = useState(false);
-  const initPay = useServerFn(initializeFeePayment);
-
-  function getPaymentErrorMessage(error: unknown): string {
-    const message = error instanceof Error ? error.message : "Unable to start payment.";
-    if (/configured secret key|misconfigured|PAYSTACK_SECRET_KEY/i.test(message)) {
-      return "Online payment is temporarily unavailable because the payment gateway is not configured correctly. Please contact the school admin.";
-    }
-    return message;
-  }
-
-  async function handlePay() {
-    setBusy(true);
-    try {
-      const callbackUrl =
-        typeof window !== "undefined" ? `${window.location.origin}/parent` : undefined;
-      const res = await initPay({ data: { feeId: fee.id, callbackUrl } });
-      toast.success("Redirecting to Paystack…", {
-        description: `Reference ${res.reference}`,
-      });
-      void child;
-      if (typeof window !== "undefined") {
-        window.location.href = res.authorizationUrl;
-      }
-    } catch (e) {
-      toast.error(getPaymentErrorMessage(e));
-      setBusy(false);
-    }
-  }
-
-  return (
-    <Button size="sm" onClick={handlePay} disabled={busy}>
-      {busy ? <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" /> : <CreditCard className="h-3.5 w-3.5 mr-1" />}
-      Pay {formatCurrency(Number(fee.amount) - Number(fee.amount_paid))}
-    </Button>
-  );
-}
 
 /* --------------------------------- Reports -------------------------------- */
 

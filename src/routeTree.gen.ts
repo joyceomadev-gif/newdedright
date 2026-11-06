@@ -40,8 +40,6 @@ import { Route as AuthenticatedStudentsRouteImport } from './routes/_authenticat
 import { Route as AuthenticatedTeacherRouteImport } from './routes/_authenticated/teacher'
 import { Route as AuthenticatedTraitAdminRouteImport } from './routes/_authenticated/trait-admin'
 import { Route as AuthenticatedTraitsReportRouteImport } from './routes/_authenticated/traits-report'
-import { Route as ApiPublicPaymentWebhookRouteImport } from './routes/api/public/payment-webhook'
-import { Route as ApiPublicPaystackWebhookRouteImport } from './routes/api/public/paystack-webhook'
 import { Route as ApiPublicHooksAdvanceTermRouteImport } from './routes/api/public/hooks/advance-term'
 
 const IndexRoute = IndexRouteImport.update({
@@ -204,17 +202,6 @@ const AuthenticatedTraitsReportRoute =
     path: '/traits-report',
     getParentRoute: () => AuthenticatedRoute,
   } as any)
-const ApiPublicPaymentWebhookRoute = ApiPublicPaymentWebhookRouteImport.update({
-  id: '/api/public/payment-webhook',
-  path: '/api/public/payment-webhook',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ApiPublicPaystackWebhookRoute =
-  ApiPublicPaystackWebhookRouteImport.update({
-    id: '/api/public/paystack-webhook',
-    path: '/api/public/paystack-webhook',
-    getParentRoute: () => rootRouteImport,
-  } as any)
 const ApiPublicHooksAdvanceTermRoute =
   ApiPublicHooksAdvanceTermRouteImport.update({
     id: '/api/public/hooks/advance-term',
@@ -253,8 +240,6 @@ export interface FileRoutesByFullPath {
   '/teacher': typeof AuthenticatedTeacherRoute
   '/trait-admin': typeof AuthenticatedTraitAdminRoute
   '/traits-report': typeof AuthenticatedTraitsReportRoute
-  '/api/public/payment-webhook': typeof ApiPublicPaymentWebhookRoute
-  '/api/public/paystack-webhook': typeof ApiPublicPaystackWebhookRoute
   '/api/public/hooks/advance-term': typeof ApiPublicHooksAdvanceTermRoute
 }
 export interface FileRoutesByTo {
@@ -288,8 +273,6 @@ export interface FileRoutesByTo {
   '/teacher': typeof AuthenticatedTeacherRoute
   '/trait-admin': typeof AuthenticatedTraitAdminRoute
   '/traits-report': typeof AuthenticatedTraitsReportRoute
-  '/api/public/payment-webhook': typeof ApiPublicPaymentWebhookRoute
-  '/api/public/paystack-webhook': typeof ApiPublicPaystackWebhookRoute
   '/api/public/hooks/advance-term': typeof ApiPublicHooksAdvanceTermRoute
 }
 export interface FileRoutesById {
@@ -325,8 +308,6 @@ export interface FileRoutesById {
   '/_authenticated/teacher': typeof AuthenticatedTeacherRoute
   '/_authenticated/trait-admin': typeof AuthenticatedTraitAdminRoute
   '/_authenticated/traits-report': typeof AuthenticatedTraitsReportRoute
-  '/api/public/payment-webhook': typeof ApiPublicPaymentWebhookRoute
-  '/api/public/paystack-webhook': typeof ApiPublicPaystackWebhookRoute
   '/api/public/hooks/advance-term': typeof ApiPublicHooksAdvanceTermRoute
 }
 export interface FileRouteTypes {
@@ -362,8 +343,6 @@ export interface FileRouteTypes {
     | '/teacher'
     | '/trait-admin'
     | '/traits-report'
-    | '/api/public/payment-webhook'
-    | '/api/public/paystack-webhook'
     | '/api/public/hooks/advance-term'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -397,8 +376,6 @@ export interface FileRouteTypes {
     | '/teacher'
     | '/trait-admin'
     | '/traits-report'
-    | '/api/public/payment-webhook'
-    | '/api/public/paystack-webhook'
     | '/api/public/hooks/advance-term'
   id:
     | '__root__'
@@ -433,8 +410,6 @@ export interface FileRouteTypes {
     | '/_authenticated/teacher'
     | '/_authenticated/trait-admin'
     | '/_authenticated/traits-report'
-    | '/api/public/payment-webhook'
-    | '/api/public/paystack-webhook'
     | '/api/public/hooks/advance-term'
   fileRoutesById: FileRoutesById
 }
@@ -445,8 +420,6 @@ export interface RootRouteChildren {
   LoginRoute: typeof LoginRoute
   ResetPasswordRoute: typeof ResetPasswordRoute
   SignupRoute: typeof SignupRoute
-  ApiPublicPaymentWebhookRoute: typeof ApiPublicPaymentWebhookRoute
-  ApiPublicPaystackWebhookRoute: typeof ApiPublicPaystackWebhookRoute
   ApiPublicHooksAdvanceTermRoute: typeof ApiPublicHooksAdvanceTermRoute
 }
 
@@ -669,20 +642,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedTraitsReportRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
-    '/api/public/payment-webhook': {
-      id: '/api/public/payment-webhook'
-      path: '/api/public/payment-webhook'
-      fullPath: '/api/public/payment-webhook'
-      preLoaderRoute: typeof ApiPublicPaymentWebhookRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/public/paystack-webhook': {
-      id: '/api/public/paystack-webhook'
-      path: '/api/public/paystack-webhook'
-      fullPath: '/api/public/paystack-webhook'
-      preLoaderRoute: typeof ApiPublicPaystackWebhookRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/api/public/hooks/advance-term': {
       id: '/api/public/hooks/advance-term'
       path: '/api/public/hooks/advance-term'
@@ -760,8 +719,6 @@ const rootRouteChildren: RootRouteChildren = {
   LoginRoute: LoginRoute,
   ResetPasswordRoute: ResetPasswordRoute,
   SignupRoute: SignupRoute,
-  ApiPublicPaymentWebhookRoute: ApiPublicPaymentWebhookRoute,
-  ApiPublicPaystackWebhookRoute: ApiPublicPaystackWebhookRoute,
   ApiPublicHooksAdvanceTermRoute: ApiPublicHooksAdvanceTermRoute,
 }
 export const routeTree = rootRouteImport

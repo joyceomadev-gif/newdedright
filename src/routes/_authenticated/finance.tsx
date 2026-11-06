@@ -18,7 +18,6 @@ import { Switch } from "@/components/ui/switch";
 import { Receipt, Wallet, FileText, TrendingUp, Plus, Loader2, DollarSign, Trash2, Printer, Users, BarChart3, CreditCard, ExternalLink, Pencil } from "lucide-react";
 import { toast } from "sonner";
 import { useServerFn } from "@tanstack/react-start";
-import { initializeFeePayment } from "@/lib/paystack.functions";
 import { softDelete } from "@/lib/soft-delete";
 import { SessionSelect, useCurrentSessionId } from "@/components/SessionSelect";
 import { PaginationBar, usePagedSlice } from "@/components/ui/pagination-bar";
@@ -44,14 +43,12 @@ function FinancePage() {
           <TabsTrigger value="invoices"><Receipt className="h-4 w-4 mr-1.5" />Invoices</TabsTrigger>
           <TabsTrigger value="expenses"><Wallet className="h-4 w-4 mr-1.5" />Expenses</TabsTrigger>
           <TabsTrigger value="reports"><BarChart3 className="h-4 w-4 mr-1.5" />Reports</TabsTrigger>
-          <TabsTrigger value="payments"><CreditCard className="h-4 w-4 mr-1.5" />Online Pay</TabsTrigger>
         </TabsList>
         <TabsContent value="overview" className="mt-4"><Overview /></TabsContent>
         <TabsContent value="structures" className="mt-4"><FeeStructures /></TabsContent>
         <TabsContent value="invoices" className="mt-4"><Invoices /></TabsContent>
         <TabsContent value="expenses" className="mt-4"><Expenses /></TabsContent>
         <TabsContent value="reports" className="mt-4"><Reports /></TabsContent>
-        <TabsContent value="payments" className="mt-4"><OnlinePayments /></TabsContent>
       </Tabs>
     </div>
   );
@@ -543,18 +540,6 @@ function Invoices() {
     onError: (e: Error) => toast.error(e.message),
   });
 
-  const initFeePayment = useServerFn(initializeFeePayment);
-  const payWithPaystack = useMutation({
-    mutationFn: async (feeId: string) => {
-      return initFeePayment({
-        data: { feeId, callbackUrl: window.location.href },
-      });
-    },
-    onSuccess: (res) => {
-      window.location.href = res.authorizationUrl;
-    },
-    onError: (e: Error) => toast.error(e.message),
-  });
 
   const studentName = (id: string) => {
     const s = students?.find((x) => x.id === id);
@@ -623,16 +608,6 @@ function Invoices() {
                     {r.status !== "paid" && (
                       <>
                         <Button size="sm" variant="outline" onClick={() => setPayOpen(r)}>Pay</Button>
-                        <Button
-                          size="sm"
-                          onClick={() => payWithPaystack.mutate(r.id)}
-                          disabled={payWithPaystack.isPending}
-                          title="Pay online with Paystack"
-                        >
-                          {payWithPaystack.isPending && payWithPaystack.variables === r.id
-                            ? <Loader2 className="h-4 w-4 animate-spin" />
-                            : <><CreditCard className="h-4 w-4 mr-1" />Paystack</>}
-                        </Button>
                       </>
                     )}
                     {Number(r.amount_paid) > 0 && (
@@ -1107,44 +1082,3 @@ function Reports() {
   );
 }
 
-/* ------------------------- Online Payments ------------------------- */
-
-function OnlinePayments() {
-  return (
-    <Card className="p-6 space-y-3 max-w-2xl">
-      <div className="flex items-center gap-2">
-        <CreditCard className="h-5 w-5 text-primary" />
-        <h3 className="font-medium">Online Payments — Paystack</h3>
-      </div>
-      <p className="text-sm text-muted-foreground">
-        Fee payments are powered by <strong>Paystack</strong> (card, bank transfer, USSD, Opay, mobile money).
-        On any unpaid invoice in the Invoices tab, click the <strong>Paystack</strong> button to redirect
-        the payer to a secure Paystack checkout. Receipts are recorded automatically via webhook.
-      </p>
-      <div className="rounded-md border p-3 bg-muted/40 text-xs space-y-2">
-        <div className="font-medium">Setup checklist (admin)</div>
-        <ol className="list-decimal pl-5 space-y-1 text-muted-foreground">
-          <li>Paystack secret key must be configured in the project secrets.</li>
-          <li>
-            In Paystack Dashboard → Settings → API Keys &amp; Webhooks, set the webhook URL to:
-            <code className="block mt-1 bg-background p-1 rounded text-foreground break-all">
-              https://schools.zgils.com/api/public/paystack-webhook
-            </code>
-          </li>
-          <li>Default currency is NGN. Contact <a className="underline" href="mailto:sales@zgils.com">sales@zgils.com</a> for help.</li>
-        </ol>
-      </div>
-      <p className="text-sm text-muted-foreground">
-        Salary payouts to staff also run via Paystack Transfers — see Staff → Payroll. Each staff member must
-        have a bank account and bank code on their profile before transfers can be initiated.
-      </p>
-      <a
-        href="https://dashboard.paystack.com/#/settings/developer"
-        target="_blank" rel="noopener noreferrer"
-        className="inline-flex items-center text-sm text-primary hover:underline"
-      >
-        Open Paystack dashboard <ExternalLink className="h-3 w-3 ml-1" />
-      </a>
-    </Card>
-  );
-}

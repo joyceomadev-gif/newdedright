@@ -39,7 +39,6 @@ import {
 import { downloadCsv } from "@/lib/export-csv";
 import { toast } from "sonner";
 import { useServerFn } from "@tanstack/react-start";
-import { paySalaryViaPaystack } from "@/lib/paystack.functions";
 import { BulkImportDialog } from "@/components/BulkImportDialog";
 import { SessionSelect, useCurrentSessionId } from "@/components/SessionSelect";
 import jsPDF from "jspdf";
@@ -1133,15 +1132,6 @@ function PayrollTab({ isAdmin }: { isAdmin: boolean }) {
     onError: (e: Error) => toast.error(e.message),
   });
 
-  const payViaPaystackFn = useServerFn(paySalaryViaPaystack);
-  const payViaPaystack = useMutation({
-    mutationFn: async (payrollId: string) => payViaPaystackFn({ data: { payrollId } }),
-    onSuccess: () => {
-      toast.success("Paystack transfer initiated. Status will update once confirmed.");
-      qc.invalidateQueries({ queryKey: ["payroll"] });
-    },
-    onError: (e: Error) => toast.error(e.message),
-  });
 
   if (!isAdmin) {
     return <Card className="p-4 text-sm text-muted-foreground">Only admins can manage payroll.</Card>;
@@ -1207,18 +1197,6 @@ function PayrollTab({ isAdmin }: { isAdmin: boolean }) {
                 <TableCell className="text-right space-x-1 whitespace-nowrap">
                   {canTransition(r.status, "approved") && (
                     <Button size="sm" variant="outline" onClick={() => updateStatus.mutate({ row: r, to: "approved" })}>Approve</Button>
-                  )}
-                  {r.status === "approved" && !r.paystack_transfer_code && (
-                    <Button
-                      size="sm"
-                      onClick={() => payViaPaystack.mutate(r.id)}
-                      disabled={payViaPaystack.isPending}
-                      title="Initiate Paystack transfer to staff bank account"
-                    >
-                      {payViaPaystack.isPending && payViaPaystack.variables === r.id
-                        ? <Loader2 className="h-4 w-4 animate-spin" />
-                        : <><CreditCard className="h-4 w-4 mr-1" />Paystack</>}
-                    </Button>
                   )}
                   {canTransition(r.status, "paid") && (
                     <Button size="sm" variant="outline" onClick={() => updateStatus.mutate({ row: r, to: "paid" })}>Mark paid</Button>
